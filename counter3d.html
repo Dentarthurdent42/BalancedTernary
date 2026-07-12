@@ -68,6 +68,11 @@
   .crankrow { display: flex; align-items: center; gap: 12px; }
   .crankrow label { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); white-space: nowrap; }
   .crankrow input[type=range] { flex: 1; accent-color: var(--accent); }
+  .crankrow .speedval {
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: 11px; color: var(--ink-3); letter-spacing: 0.04em;
+    min-width: 5.5ch; text-align: right;
+  }
 
   .controls { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
   .controls button {
@@ -108,6 +113,11 @@
     <div class="crankrow">
       <label>crank</label>
       <input type="range" id="crank" min="-40" max="40" step="0.01" value="0" />
+    </div>
+    <div class="crankrow">
+      <label>speed</label>
+      <input type="range" id="speed" min="0.1" max="8" step="0.1" value="0.7" />
+      <span class="speedval" id="speedval">0.7 / s</span>
     </div>
     <div class="controls">
       <div class="nwheels">
@@ -390,6 +400,7 @@
     let crankTurns = 0;        // current crank position (turns); 1 turn = 1 count
     let targetTurns = 0;       // where we're easing toward (buttons / run)
     let running = false;
+    let runSpeed = 0.7;        // counts per second while running (speed slider)
     const slider = document.getElementById('crank');
 
     function setTarget(t) {
@@ -424,7 +435,7 @@
       requestAnimationFrame(animate);
       const dt = Math.min(0.05, (now - last) / 1000); last = now;
 
-      if (running) setTarget(targetTurns + dt * 0.7);
+      if (running) setTarget(targetTurns + dt * runSpeed);
 
       // ease the single input DOF toward its target
       const k = 1 - Math.exp(-dt * 7);
@@ -453,6 +464,12 @@
     slider.addEventListener('input', () => {
       running = false; document.getElementById('run').classList.remove('on');
       crankTurns = targetTurns = parseFloat(slider.value);
+    });
+    const speedSlider = document.getElementById('speed');
+    const speedVal = document.getElementById('speedval');
+    speedSlider.addEventListener('input', () => {
+      runSpeed = parseFloat(speedSlider.value);
+      speedVal.textContent = `${runSpeed.toFixed(1)} / s`;
     });
     const roundTurn = () => Math.round(crankTurns);
     document.getElementById('inc').onclick  = () => setTarget(roundTurn() + 1);
