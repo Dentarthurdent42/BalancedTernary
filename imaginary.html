@@ -1,0 +1,928 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Imaginary Bases — Gaussian Integer Explorer</title>
+<style>
+  :root {
+    --bg: oklch(0.975 0.005 80);
+    --panel: oklch(0.99 0.003 80);
+    --ink: oklch(0.18 0.01 80);
+    --ink-2: oklch(0.42 0.008 80);
+    --ink-3: oklch(0.62 0.01 80);
+    --rule: oklch(0.88 0.005 80);
+    --accent: oklch(0.58 0.16 35);
+    --accent-soft: oklch(0.90 0.06 35);
+    --mono: "JetBrains Mono", "SF Mono", ui-monospace, Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; height: 100%; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    min-height: 100svh;
+    overscroll-behavior: none;
+  }
+  .root { min-height: 100svh; display: grid; grid-template-rows: auto 1fr; }
+
+  .topbar {
+    padding: 18px 28px;
+    border-bottom: 1px solid var(--rule);
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .title { font-size: 14px; letter-spacing: 0.06em; font-weight: 500; }
+  .title a { color: inherit; text-decoration: none; }
+  .sub {
+    font-family: var(--mono);
+    font-variant-numeric: tabular-nums;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-2);
+  }
+
+  .stage {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    min-height: 0;
+  }
+  @media (max-width: 900px) {
+    .stage { grid-template-columns: 1fr; grid-template-rows: 60svh auto; }
+  }
+
+  .plane { position: relative; min-width: 0; min-height: 0; }
+  .plane canvas { position: absolute; inset: 0; width: 100%; height: 100%; cursor: grab; touch-action: none; }
+  .plane canvas.panning { cursor: grabbing; }
+  .tooltip {
+    position: absolute;
+    pointer-events: none;
+    background: var(--panel);
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    padding: 5px 9px;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.03em;
+    color: var(--ink);
+    white-space: nowrap;
+    transform: translate(12px, 14px);
+    box-shadow: 0 2px 8px oklch(0.2 0.01 80 / 0.08);
+  }
+  .hint {
+    position: absolute;
+    left: 14px;
+    bottom: 10px;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+
+  .panel {
+    border-left: 1px solid var(--rule);
+    background: var(--panel);
+    padding: 18px 20px 40px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+  @media (max-width: 900px) { .panel { border-left: none; border-top: 1px solid var(--rule); } }
+
+  .sect-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin-bottom: 7px;
+  }
+
+  .presets { display: flex; flex-direction: column; gap: 4px; }
+  .preset {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 10px;
+    padding: 6px 9px;
+    border: 1px solid var(--rule);
+    border-radius: 7px;
+    background: transparent;
+    font: inherit;
+    font-size: 12.5px;
+    color: var(--ink);
+    cursor: pointer;
+    text-align: left;
+  }
+  .preset:hover { border-color: var(--ink-3); }
+  .preset.active { border-color: var(--accent); background: oklch(0.97 0.02 35); }
+  .preset .b {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink-2);
+    white-space: nowrap;
+  }
+
+  .custom { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .custom .wide { grid-column: 1 / -1; }
+  .field { display: flex; flex-direction: column; gap: 3px; }
+  .field label {
+    font-family: var(--mono);
+    font-size: 9.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+  .field input {
+    font-family: var(--mono);
+    font-size: 12.5px;
+    padding: 5px 8px;
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    background: var(--bg);
+    color: var(--ink);
+    width: 100%;
+  }
+  .field input:focus { outline: none; border-color: var(--ink-3); }
+  .field input.bad { border-color: var(--accent); }
+  .warn {
+    font-size: 11.5px;
+    color: var(--accent);
+    line-height: 1.45;
+  }
+
+  .nrow { display: flex; align-items: center; gap: 10px; }
+  .nrow input[type=range] { flex: 1; accent-color: var(--accent); }
+  .nrow .nval {
+    font-family: var(--mono);
+    font-size: 13px;
+    min-width: 5ch;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  button.ghost {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 5px 10px;
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    background: transparent;
+    color: var(--ink-2);
+    cursor: pointer;
+  }
+  button.ghost:hover { border-color: var(--ink-3); color: var(--ink); }
+  button.ghost.on { border-color: var(--accent); color: var(--accent); }
+
+  .legend { display: flex; flex-direction: column; gap: 6px; }
+  .ramp { position: relative; height: 12px; border-radius: 4px; overflow: hidden; border: 1px solid var(--rule); }
+  .ramp canvas { width: 100%; height: 100%; display: block; }
+  .legend .ends {
+    display: flex;
+    justify-content: space-between;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--ink-3);
+  }
+  .keyrow { display: flex; align-items: center; gap: 7px; font-size: 11.5px; color: var(--ink-2); }
+  .keyrow .sw { width: 13px; height: 13px; border-radius: 3px; border: 1px solid var(--rule); flex: none; }
+
+  .verdict {
+    font-size: 12.5px;
+    line-height: 1.5;
+    padding: 9px 11px;
+    border-radius: 7px;
+    border: 1px solid var(--rule);
+  }
+  .verdict.ok { border-color: oklch(0.80 0.07 150); background: oklch(0.97 0.02 150); }
+  .verdict.gap { border-color: var(--accent-soft); background: oklch(0.97 0.02 35); }
+  .verdict b { font-variant-numeric: tabular-nums; }
+
+  .inspect { font-size: 12.5px; line-height: 1.5; }
+  .inspect .z { font-family: var(--mono); font-size: 14px; }
+  .inspect .digits {
+    font-family: var(--mono);
+    font-size: 15px;
+    letter-spacing: 0.14em;
+    word-break: break-all;
+    margin: 4px 0 2px;
+  }
+  .inspect .check { font-family: var(--mono); font-size: 10.5px; color: var(--ink-3); }
+  table.steps {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 8px;
+    font-family: var(--mono);
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+  }
+  table.steps th {
+    text-align: left;
+    font-weight: 400;
+    color: var(--ink-3);
+    font-size: 9.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 2px 8px 4px 0;
+    border-bottom: 1px solid var(--rule);
+  }
+  table.steps td { padding: 3px 8px 3px 0; border-bottom: 1px solid oklch(0.94 0.004 80); color: var(--ink-2); }
+  table.steps td.d { color: var(--accent); }
+  .muted { color: var(--ink-3); font-size: 11.5px; line-height: 1.5; }
+
+  .theorem {
+    border-top: 1px solid var(--rule);
+    padding-top: 14px;
+    font-size: 12px;
+    line-height: 1.55;
+    color: var(--ink-2);
+  }
+  .theorem a { color: var(--accent); }
+</style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef, useMemo } = React;
+
+    // ═══════════════════ Gaussian-integer arithmetic ═══════════════════
+    // A Gaussian integer is an [re, im] pair of JS integers. A positional
+    // system is a base b ∈ ℤ[i] with N(b) ≥ 2 plus a digit set D ⊂ ℤ.
+    // The theorem this page illustrates: base i−1 with D = {0,1} represents
+    // every Gaussian integer uniquely (Khmelnik 1964 / Penney 1965).
+
+    const gnorm = (z) => z[0] * z[0] + z[1] * z[1];
+    const gmul = (a, b) => [a[0] * b[0] - a[1] * b[1], a[0] * b[1] + a[1] * b[0]];
+    const gsub = (a, b) => [a[0] - b[0], a[1] - b[1]];
+    const gabs = (z) => Math.hypot(z[0], z[1]);
+    const gkey = (z) => z[0] + ',' + z[1];
+
+    // Exact quotient z / b in ℤ[i], or null when b ∤ z:
+    //   z/b = z·conj(b) / N(b), integral iff both parts divide.
+    function gdivExact(z, b) {
+      const n = gnorm(b);
+      const re = z[0] * b[0] + z[1] * b[1];
+      const im = z[1] * b[0] - z[0] * b[1];
+      if (re % n !== 0 || im % n !== 0) return null;
+      return [re / n, im / n];
+    }
+
+    // One step of the division algorithm: the digit d ∈ D with b | (z − d),
+    // and the quotient q = (z − d)/b. Null when no digit fits.
+    function gdivmod(z, b, D) {
+      for (const d of D) {
+        const q = gdivExact([z[0] - d, z[1]], b);
+        if (q) return { d, q };
+      }
+      return null;
+    }
+
+    // Is D a complete residue system mod b? (|D| = N(b), pairwise distinct
+    // residues.) Then gdivmod is deterministic and encode() below finds the
+    // canonical — for a valid system, the unique — expansion.
+    function isCRS(b, D) {
+      if (D.length !== gnorm(b)) return false;
+      for (let i = 0; i < D.length; i++)
+        for (let j = i + 1; j < D.length; j++)
+          if (gdivExact([D[i] - D[j], 0], b)) return false;
+      return true;
+    }
+
+    // Full expansion of z: repeat z ← (z − d)/b until 0. Returns digits
+    // least-significant first plus the step trace, or null when the orbit
+    // cycles / exceeds maxLen (⇒ z has no finite expansion via gdivmod).
+    function encode(z, b, D, maxLen = 96) {
+      const digits = [], steps = [], seen = new Set();
+      let cur = z;
+      while (cur[0] !== 0 || cur[1] !== 0) {
+        const key = gkey(cur);
+        if (seen.has(key) || digits.length >= maxLen) return null;
+        seen.add(key);
+        const st = gdivmod(cur, b, D);
+        if (!st) return null;
+        digits.push(st.d);
+        steps.push({ z: cur, d: st.d, q: st.q });
+        cur = st.q;
+      }
+      return { digits, steps };
+    }
+
+    // Horner evaluation of a least-significant-first digit list: Σ dₖ·bᵏ.
+    function evalDigits(digits, b) {
+      let v = [0, 0];
+      for (let k = digits.length - 1; k >= 0; k--) {
+        v = gmul(v, b);
+        v = [v[0] + digits[k], v[1]];
+      }
+      return v;
+    }
+
+    // ── minimal digit depths, by forward search ──
+    // S₀ = {0}, Sₙ₊₁ = b·Sₙ + D, so Sₙ = every value with an n-digit
+    // expansion. depth(z) = the least n with z ∈ Sₙ — for a unique-
+    // representation system this equals the canonical digit count.
+    // Values with |s| > R can never re-enter the disk |z| ≤ W, because a
+    // descendant bʲs + Σdᵏbᵏ has modulus ≥ |s| − maxD/(|b|−1); pruning at R
+    // keeps the search finite yet exact inside the window.
+    function minimalDepths(b, D, W, nMax) {
+      const maxD = Math.max(...D.map(Math.abs));
+      const R = W + maxD / (gabs(b) - 1) + 2;
+      const R2 = R * R;
+      const depth = new Map([[gkey([0, 0]), 0]]);
+      const parent = new Map();
+      let frontier = [[0, 0]];
+      for (let n = 1; n <= nMax && frontier.length; n++) {
+        const next = [];
+        for (const s of frontier) {
+          const bs = gmul(b, s);
+          for (const d of D) {
+            const t = [bs[0] + d, bs[1]];
+            if (t[0] * t[0] + t[1] * t[1] > R2) continue;
+            const key = gkey(t);
+            if (!depth.has(key)) {
+              depth.set(key, n);
+              parent.set(key, { pk: gkey(s), d });
+              next.push(t);
+            }
+          }
+        }
+        frontier = next;
+      }
+      return { depth, parent, W, nMax };
+    }
+
+    // Reconstruct a minimal expansion from the search tree (digits come out
+    // least-significant first: z = b·s + d peels off d = d₀).
+    function digitsFromParents(parent, z) {
+      const digits = [];
+      let key = gkey(z);
+      while (key !== '0,0') {
+        const p = parent.get(key);
+        if (!p) return null;
+        digits.push(p.d);
+        key = p.pk;
+      }
+      return digits;
+    }
+
+    // ═══════════════════ formatting ═══════════════════
+    function fmtC(z) {
+      const [a, b] = z;
+      if (b === 0) return String(a);
+      const im = (b === 1 ? '' : b === -1 ? '−' : fmtInt(b)) + 'i';
+      if (a === 0) return b < 0 && b !== -1 ? im : (b === -1 ? '−i' : im);
+      return fmtInt(a) + (b > 0 ? '+' : '−') + (Math.abs(b) === 1 ? '' : String(Math.abs(b))) + 'i';
+    }
+    const fmtInt = (n) => (n < 0 ? '−' + (-n) : String(n));
+    function fmtDigits(digits) {
+      if (digits.length === 0) return '0';
+      const ms = [...digits].reverse();
+      if (ms.every((d) => d >= 0 && d <= 9)) return ms.join('');
+      return ms.map((d) => (d < 0 ? '(' + fmtInt(d) + ')' : String(d))).join(' ');
+    }
+
+    // ═══════════════════ presets ═══════════════════
+    const PRESETS = [
+      { name: 'i − 1 · the theorem', b: [-1, 1], D: [0, 1], note: 'twindragon' },
+      { name: '−1 − i · conjugate', b: [-1, -1], D: [0, 1], note: 'mirror dragon' },
+      { name: '2i · quater-imaginary', b: [0, 2], D: [0, 1, 2, 3], note: 'even im only' },
+      { name: '−2 · negabinary', b: [-2, 0], D: [0, 1], note: 'real line' },
+      { name: '3 · balanced ternary', b: [3, 0], D: [-1, 0, 1], note: 'real line' },
+      { name: '1 + i · leaves gaps', b: [1, 1], D: [0, 1], note: 'counterexample' },
+    ];
+
+    // ═══════════════════ color ═══════════════════
+    // Sequential job (digit depth = magnitude): one hue, light→dark. The
+    // terracotta accent is reserved for the layer just added at the current n.
+    const HUE = 237;
+    function depthColor(k, nMax) {
+      const t = nMax <= 1 ? 1 : k / nMax;
+      const L = 0.93 - 0.56 * t;
+      const C = 0.04 + 0.07 * (1 - Math.abs(2 * t - 1));
+      return `oklch(${L.toFixed(3)} ${C.toFixed(3)} ${HUE})`;
+    }
+    const LAYER_COLOR = 'oklch(0.58 0.16 35)';
+    const GAP_COLOR = 'oklch(0.88 0.05 35)';
+
+    // ═══════════════════ the canvas ═══════════════════
+    // The search is exact inside an origin-centered disk of radius W_CAP, so
+    // pan/zoom are clamped to keep the whole viewport inside that disk.
+    const W_CAP = 300, S_MAX = 96;
+
+    function makeHatch(color) {
+      const c = document.createElement('canvas');
+      c.width = c.height = 8;
+      const g = c.getContext('2d');
+      g.strokeStyle = color;
+      g.lineWidth = 1.6;
+      g.beginPath();
+      g.moveTo(-2, 6); g.lineTo(6, -2);
+      g.moveTo(2, 10); g.lineTo(10, 2);
+      g.stroke();
+      return c;
+    }
+
+    function drawPlane(canvas, view, data, n, sel, hover) {
+      const dpr = window.devicePixelRatio || 1;
+      const w = canvas.clientWidth, h = canvas.clientHeight;
+      if (!w || !h) return;
+      if (canvas.width !== w * dpr || canvas.height !== h * dpr) {
+        canvas.width = w * dpr;
+        canvas.height = h * dpr;
+      }
+      const g = canvas.getContext('2d');
+      g.setTransform(dpr, 0, 0, dpr, 0, 0);
+      g.fillStyle = 'oklch(0.975 0.005 80)';
+      g.fillRect(0, 0, w, h);
+
+      const { cx, cy, s } = view;
+      const toPx = (z) => [w / 2 + (z[0] - cx) * s, h / 2 - (z[1] - cy) * s];
+      const aMin = Math.floor(cx - w / 2 / s) - 1, aMax = Math.ceil(cx + w / 2 / s) + 1;
+      const bMin = Math.floor(cy - h / 2 / s) - 1, bMax = Math.ceil(cy + h / 2 / s) + 1;
+
+      const gap = Math.max(0.6, s * 0.08);
+      const side = s - gap;
+      const { depth, nMax } = data;
+
+      // batch cells by depth so each color is one fill
+      const paths = new Map();
+      const gapPath = new Path2D();
+      let gapCount = 0;
+      for (let a = aMin; a <= aMax; a++) {
+        for (let bb = bMin; bb <= bMax; bb++) {
+          const dep = depth.get(a + ',' + bb);
+          const [px, py] = toPx([a, bb]);
+          if (dep === undefined) {
+            gapPath.rect(px - side / 2, py - side / 2, side, side);
+            gapCount++;
+          } else if (dep <= n) {
+            let p = paths.get(dep);
+            if (!p) { p = new Path2D(); paths.set(dep, p); }
+            p.rect(px - side / 2, py - side / 2, side, side);
+          } else if (s >= 10) {
+            // deeper than the slider: a faint lattice dot as a placeholder
+            let p = paths.get(-1);
+            if (!p) { p = new Path2D(); paths.set(-1, p); }
+            p.rect(px - 1, py - 1, 2, 2);
+          }
+        }
+      }
+      for (const [dep, p] of paths) {
+        g.fillStyle = dep === -1 ? 'oklch(0.88 0.005 80)'
+          : dep === n ? LAYER_COLOR
+          : depthColor(dep, nMax);
+        g.fill(p);
+      }
+      if (gapCount) {
+        if (!drawPlane._hatch) drawPlane._hatch = makeHatch(GAP_COLOR);
+        g.save();
+        g.fillStyle = g.createPattern(drawPlane._hatch, 'repeat');
+        g.fill(gapPath);
+        g.restore();
+      }
+
+      // axes
+      g.strokeStyle = 'oklch(0.78 0.008 80)';
+      g.lineWidth = 1;
+      const [ox, oy] = toPx([0, 0]);
+      g.beginPath();
+      g.moveTo(0, oy + 0.5); g.lineTo(w, oy + 0.5);
+      g.moveTo(ox + 0.5, 0); g.lineTo(ox + 0.5, h);
+      g.stroke();
+
+      // integer ticks when zoomed in
+      if (s >= 26) {
+        g.fillStyle = 'oklch(0.55 0.01 80)';
+        g.font = '10px "JetBrains Mono", ui-monospace, monospace';
+        g.textAlign = 'center';
+        const step = s >= 44 ? 1 : 2;
+        for (let a = Math.ceil(aMin / step) * step; a <= aMax; a += step) {
+          if (a === 0) continue;
+          const [px] = toPx([a, 0]);
+          g.fillText(String(a), px, oy + 14);
+        }
+        for (let bb = Math.ceil(bMin / step) * step; bb <= bMax; bb += step) {
+          if (bb === 0) continue;
+          const [, py] = toPx([0, bb]);
+          g.fillText(bb + 'i', ox + 16, py + 3);
+        }
+      }
+
+      // hover + selection outlines
+      const outline = (z, color, lw) => {
+        const [px, py] = toPx(z);
+        g.strokeStyle = color;
+        g.lineWidth = lw;
+        g.strokeRect(px - side / 2, py - side / 2, side, side);
+      };
+      if (hover && (hover[0] !== sel?.[0] || hover[1] !== sel?.[1]))
+        outline(hover, 'oklch(0.35 0.01 80)', 1.4);
+      if (sel) outline(sel, LAYER_COLOR, 2.2);
+    }
+
+    // ═══════════════════ UI ═══════════════════
+    function App() {
+      const [presetIdx, setPresetIdx] = useState(0);
+      const [bText, setBText] = useState({ re: '-1', im: '1' });
+      const [dText, setDText] = useState('0, 1');
+      const [n, setN] = useState(10);
+      const [playing, setPlaying] = useState(false);
+      const [view, setView] = useState({ cx: 0, cy: 0, s: 22 });
+      const [sel, setSel] = useState(null);
+      const [hover, setHover] = useState(null);
+      const canvasRef = useRef(null);
+      const planeRef = useRef(null);
+
+      // parse base + digit set (custom fields always reflect the active system)
+      const parsed = useMemo(() => {
+        const re = parseInt(bText.re, 10), im = parseInt(bText.im, 10);
+        const bOk = Number.isInteger(re) && Number.isInteger(im) && re * re + im * im >= 2;
+        const D = dText.split(/[,\s]+/).filter(Boolean).map((t) => parseInt(t.replace('−', '-'), 10));
+        const dOk = D.length > 0 && D.length <= 64 && D.every(Number.isInteger)
+          && new Set(D).size === D.length;
+        return { b: bOk ? [re, im] : null, D: dOk ? D : null };
+      }, [bText, dText]);
+
+      const b = parsed.b || PRESETS[0].b;
+      const D = parsed.D || PRESETS[0].D;
+      const crs = useMemo(() => isCRS(b, D), [b.join(), D.join()]);
+
+      // Keep the viewport inside the origin-centered disk of radius W_CAP
+      // where the depth search is exact: zoom no further out than fits, and
+      // pull the center back in when a pan or zoom would poke outside.
+      const clampView = (v) => {
+        const el = canvasRef.current;
+        const w = el?.clientWidth || 1200, h = el?.clientHeight || 800;
+        const halfDiag = Math.hypot(w, h) / 2;
+        const s = Math.max(halfDiag / (W_CAP - 4), Math.min(S_MAX, v.s));
+        const maxC = Math.max(0, W_CAP - 4 - halfDiag / s);
+        const c = Math.hypot(v.cx, v.cy);
+        const f = c > maxC ? maxC / c : 1;
+        return { s, cx: v.cx * f, cy: v.cy * f };
+      };
+
+      // window radius the search must cover: the farthest viewport corner
+      // from the origin, bucketed so pans don't recompute constantly
+      const el0 = canvasRef.current;
+      const halfDiag0 = Math.hypot(el0?.clientWidth || 1200, el0?.clientHeight || 800) / 2 / view.s;
+      const Rneed = Math.hypot(view.cx, view.cy) + halfDiag0;
+      const W = Math.min(W_CAP, Math.pow(2, Math.ceil(Math.log2(Math.max(16, Rneed)))));
+
+      // depth needed to fill radius W in base |b| = √N(b), with headroom
+      const nMax = useMemo(() => {
+        const need = Math.ceil(2 * Math.log(W + 2) / Math.log(gnorm(b))) + 8;
+        return Math.max(8, Math.min(40, need));
+      }, [W, b.join()]);
+
+      const data = useMemo(
+        () => minimalDepths(b, D, W, nMax),
+        [b.join(), D.join(), W, nMax]
+      );
+
+      useEffect(() => { if (n > nMax) setN(nMax); }, [nMax]);
+
+      // play: grow n one layer at a time
+      useEffect(() => {
+        if (!playing) return;
+        const id = setInterval(() => {
+          setN((v) => {
+            if (v >= nMax) { setPlaying(false); return v; }
+            return v + 1;
+          });
+        }, 240);
+        return () => clearInterval(id);
+      }, [playing, nMax]);
+
+      // coverage verdict over the actual viewport
+      const verdict = useMemo(() => {
+        const el = canvasRef.current;
+        const w = el?.clientWidth || 800, h = el?.clientHeight || 600;
+        const { cx, cy, s } = view;
+        const aMin = Math.floor(cx - w / 2 / s), aMax = Math.ceil(cx + w / 2 / s);
+        const bMin = Math.floor(cy - h / 2 / s), bMax = Math.ceil(cy + h / 2 / s);
+        let total = 0, gaps = 0, deepest = 0;
+        for (let a = aMin; a <= aMax; a++) {
+          for (let bb = bMin; bb <= bMax; bb++) {
+            total++;
+            const dep = data.depth.get(a + ',' + bb);
+            if (dep === undefined) gaps++;
+            else if (dep > deepest) deepest = dep;
+          }
+        }
+        return { total, gaps, deepest };
+      }, [data, view]);
+
+      // selection details
+      const selInfo = useMemo(() => {
+        if (!sel) return null;
+        if (crs) {
+          const enc = encode(sel, b, D);
+          if (enc) return { digits: enc.digits, steps: enc.steps, minimal: true };
+        }
+        const ds = digitsFromParents(data.parent, sel);
+        if (ds) {
+          // rebuild the step trace from the digits themselves
+          const steps = [];
+          let cur = sel;
+          for (const d of ds) {
+            const q = gdivExact([cur[0] - d, cur[1]], b);
+            steps.push({ z: cur, d, q });
+            cur = q;
+          }
+          return { digits: ds, steps, minimal: !crs };
+        }
+        return { digits: null };
+      }, [sel, b.join(), D.join(), crs, data]);
+
+      // redraw
+      useEffect(() => {
+        const el = canvasRef.current;
+        if (el) drawPlane(el, view, data, n, sel, hover);
+      }, [view, data, n, sel, hover]);
+      useEffect(() => {
+        const onResize = () => setView((v) => ({ ...v }));
+        window.addEventListener('resize', onResize);
+        return () => window.removeEventListener('resize', onResize);
+      }, []);
+
+      // pointer interaction: drag = pan, click = select, wheel = zoom
+      useEffect(() => {
+        const el = canvasRef.current;
+        if (!el) return;
+        let drag = null;
+        const pxToZ = (e) => {
+          const r = el.getBoundingClientRect();
+          const x = e.clientX - r.left, y = e.clientY - r.top;
+          return [
+            Math.round(view.cx + (x - r.width / 2) / view.s),
+            Math.round(view.cy - (y - r.height / 2) / view.s),
+          ];
+        };
+        const down = (e) => {
+          drag = { x: e.clientX, y: e.clientY, cx: view.cx, cy: view.cy, moved: false };
+          el.setPointerCapture(e.pointerId);
+        };
+        const move = (e) => {
+          if (drag) {
+            const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+            if (Math.abs(dx) + Math.abs(dy) > 3) drag.moved = true;
+            if (drag.moved) {
+              el.classList.add('panning');
+              setView((v) => clampView({ ...v, cx: drag.cx - dx / v.s, cy: drag.cy + dy / v.s }));
+            }
+          } else {
+            const z = pxToZ(e);
+            setHover((prev) => (prev && prev[0] === z[0] && prev[1] === z[1] ? prev : z));
+          }
+        };
+        const up = (e) => {
+          if (drag && !drag.moved) setSel(pxToZ(e));
+          drag = null;
+          el.classList.remove('panning');
+        };
+        const leave = () => setHover(null);
+        const wheel = (e) => {
+          e.preventDefault();
+          const r = el.getBoundingClientRect();
+          const x = e.clientX - r.left, y = e.clientY - r.top;
+          setView((v) => {
+            const s2 = Math.min(S_MAX, v.s * Math.exp(-e.deltaY * 0.0016));
+            // keep the complex point under the cursor fixed
+            const za = v.cx + (x - r.width / 2) / v.s;
+            const zb = v.cy - (y - r.height / 2) / v.s;
+            return clampView({
+              s: s2,
+              cx: za - (x - r.width / 2) / s2,
+              cy: zb + (y - r.height / 2) / s2,
+            });
+          });
+        };
+        el.addEventListener('pointerdown', down);
+        el.addEventListener('pointermove', move);
+        el.addEventListener('pointerup', up);
+        el.addEventListener('pointerleave', leave);
+        el.addEventListener('wheel', wheel, { passive: false });
+        return () => {
+          el.removeEventListener('pointerdown', down);
+          el.removeEventListener('pointermove', move);
+          el.removeEventListener('pointerup', up);
+          el.removeEventListener('pointerleave', leave);
+          el.removeEventListener('wheel', wheel);
+        };
+      }, [view]);
+
+      // legend ramp
+      const rampRef = useRef(null);
+      useEffect(() => {
+        const el = rampRef.current;
+        if (!el) return;
+        el.width = 260; el.height = 12;
+        const g = el.getContext('2d');
+        for (let x = 0; x < 260; x++) {
+          g.fillStyle = depthColor((x / 259) * nMax, nMax);
+          g.fillRect(x, 0, 1, 12);
+        }
+      }, [nMax]);
+
+      const applyPreset = (i) => {
+        setPresetIdx(i);
+        setBText({ re: String(PRESETS[i].b[0]), im: String(PRESETS[i].b[1]) });
+        setDText(PRESETS[i].D.join(', '));
+        setSel(null);
+        setN(Math.min(10, nMax));
+      };
+
+      const hoverInfo = hover && data.depth.get(gkey(hover));
+      const activePreset = PRESETS.findIndex(
+        (p) => p.b[0] === b[0] && p.b[1] === b[1] && p.D.join() === D.join()
+      );
+
+      return (
+        <div className="root">
+          <header className="topbar">
+            <div className="title">
+              IMAGINARY BASES — GAUSSIAN INTEGER EXPLORER
+              &nbsp;·&nbsp;<a href="./THEOREM.md">the theorem ↗</a>
+            </div>
+            <div className="sub">
+              base {fmtC(b)} · N = {gnorm(b)} · digits {'{'}{D.join(',')}{'}'} · n ≤ {n}
+            </div>
+          </header>
+
+          <div className="stage">
+            <div className="plane" ref={planeRef}>
+              <canvas ref={canvasRef} />
+              {hover && (
+                <div className="tooltip" style={{
+                  left: `${((hover[0] - view.cx) * view.s + (planeRef.current?.clientWidth || 0) / 2)}px`,
+                  top: `${(-(hover[1] - view.cy) * view.s + (planeRef.current?.clientHeight || 0) / 2)}px`,
+                }}>
+                  {fmtC(hover)}
+                  {hoverInfo === undefined
+                    ? ` · no expansion (≤ ${data.nMax} digits)`
+                    : ` · ${hoverInfo} digit${hoverInfo === 1 ? '' : 's'}`}
+                </div>
+              )}
+              <div className="hint">drag to pan · scroll to zoom · click a cell for its expansion</div>
+            </div>
+
+            <aside className="panel">
+              <section>
+                <div className="sect-label">base · digit set</div>
+                <div className="presets">
+                  {PRESETS.map((p, i) => (
+                    <button key={p.name} className={'preset' + (i === activePreset ? ' active' : '')}
+                            onClick={() => applyPreset(i)}>
+                      <span>{p.name}</span>
+                      <span className="b">{'{'}{p.D.join(',')}{'}'} · {p.note}</span>
+                    </button>
+                  ))}
+                </div>
+              </section>
+
+              <section>
+                <div className="sect-label">custom system</div>
+                <div className="custom">
+                  <div className="field">
+                    <label>base re</label>
+                    <input value={bText.re} className={parsed.b ? '' : 'bad'}
+                           onChange={(e) => { setBText({ ...bText, re: e.target.value }); setSel(null); }} />
+                  </div>
+                  <div className="field">
+                    <label>base im</label>
+                    <input value={bText.im} className={parsed.b ? '' : 'bad'}
+                           onChange={(e) => { setBText({ ...bText, im: e.target.value }); setSel(null); }} />
+                  </div>
+                  <div className="field wide">
+                    <label>digits (comma-separated integers)</label>
+                    <input value={dText} className={parsed.D ? '' : 'bad'}
+                           onChange={(e) => { setDText(e.target.value); setSel(null); }} />
+                  </div>
+                </div>
+                {!parsed.b && <div className="warn" style={{ marginTop: 6 }}>base must be a Gaussian integer with N(b) ≥ 2</div>}
+                {parsed.b && parsed.D && !crs && (
+                  <div className="warn" style={{ marginTop: 6 }}>
+                    not a complete residue system mod {fmtC(b)} ({D.length} digits, N(b) = {gnorm(b)}) —
+                    expansions found by search, minimal length shown
+                  </div>
+                )}
+              </section>
+
+              <section>
+                <div className="sect-label">digits allowed · n</div>
+                <div className="nrow">
+                  <input type="range" min="0" max={nMax} value={n}
+                         onChange={(e) => { setPlaying(false); setN(+e.target.value); }} />
+                  <span className="nval">{n}/{nMax}</span>
+                  <button className={'ghost' + (playing ? ' on' : '')}
+                          onClick={() => {
+                            if (!playing && n >= nMax) setN(0);
+                            setPlaying(!playing);
+                          }}>
+                    {playing ? 'stop' : 'grow'}
+                  </button>
+                </div>
+              </section>
+
+              <section className="legend">
+                <div className="sect-label">depth — digits needed</div>
+                <div className="ramp"><canvas ref={rampRef} /></div>
+                <div className="ends"><span>0</span><span>{nMax}</span></div>
+                <div className="keyrow">
+                  <span className="sw" style={{ background: LAYER_COLOR }} />
+                  the layer just added at n = {n}
+                </div>
+                <div className="keyrow">
+                  <span className="sw" style={{
+                    background: `repeating-linear-gradient(45deg, ${GAP_COLOR} 0 2px, transparent 2px 5px)` }} />
+                  no expansion within {data.nMax} digits
+                </div>
+              </section>
+
+              <section>
+                <div className="sect-label">coverage in view</div>
+                <div className={'verdict ' + (verdict.gaps ? 'gap' : 'ok')}>
+                  {verdict.gaps === 0 ? (
+                    <>every one of the <b>{verdict.total}</b> Gaussian integers in view has an
+                    expansion — the deepest needs <b>{verdict.deepest}</b> digits</>
+                  ) : (
+                    <><b>{verdict.gaps}</b> of <b>{verdict.total}</b> cells in view have no
+                    expansion within {data.nMax} digits — ({fmtC(b)}, {'{'}{D.join(',')}{'}'})
+                    does not cover ℤ[i]</>
+                  )}
+                </div>
+              </section>
+
+              <section className="inspect">
+                <div className="sect-label">expansion</div>
+                {!sel ? (
+                  <div className="muted">click a cell on the plane to expand it with the division
+                  algorithm z → (z − d)/b</div>
+                ) : !selInfo || !selInfo.digits ? (
+                  <div>
+                    <span className="z">{fmtC(sel)}</span>
+                    <div className="warn" style={{ marginTop: 4 }}>
+                      no expansion in base {fmtC(b)} with digits {'{'}{D.join(',')}{'}'}
+                      {' '}— the division orbit never reaches 0
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <span className="z">{fmtC(sel)}</span>
+                    <div className="digits">{fmtDigits(selInfo.digits)}</div>
+                    <div className="check">
+                      {selInfo.digits.length || 1} digit{selInfo.digits.length === 1 ? '' : 's'} ·
+                      Σ dₖ·({fmtC(b)})ᵏ = {fmtC(evalDigits(selInfo.digits, b))} ✓
+                    </div>
+                    {selInfo.steps.length > 0 && (
+                      <table className="steps">
+                        <thead><tr><th>k</th><th>zₖ</th><th>dₖ</th><th>(zₖ−dₖ)/b</th></tr></thead>
+                        <tbody>
+                          {selInfo.steps.map((st, k) => (
+                            <tr key={k}>
+                              <td>{k}</td>
+                              <td>{fmtC(st.z)}</td>
+                              <td className="d">{fmtInt(st.d)}</td>
+                              <td>{fmtC(st.q)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
+                  </div>
+                )}
+              </section>
+
+              <div className="theorem">
+                <b>Theorem</b> (Khmelnik 1964 · Penney 1965). Every Gaussian integer has a unique
+                finite representation in base i−1 with digits {'{0,1}'} — no sign, no separate
+                real/imaginary parts. Watching n grow traces the proof's descent z → (z−d)/(i−1)
+                in reverse; the limit shape is the twindragon.
+                {' '}<a href="./THEOREM.md">Proof ↗</a> · machine-checked in
+                {' '}<a href="./theorem/">Lean 4 ↗</a>
+              </div>
+            </aside>
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>
