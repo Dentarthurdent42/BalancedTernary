@@ -176,9 +176,9 @@ content computationally on every push: exhaustive round-trips over the
 digits, and the `1+i` / `2i` failure modes above as negative controls.
 
 The Lean 4 development in [`theorem/`](./theorem/) machine-checks §§1–3 —
-`Penney.exists_rep`, `Penney.eval_injective_canonical`, and the packaged
-`Penney.penney : ∀ z, ∃! ds, Canonical ds ∧ eval ds = z` — with no `sorry` and
-no axioms beyond Lean's kernel.
+`Penney.exists_rep`, `Penney.eval_inj`, and the packaged `Penney.penney`
+(∃! stated unfolded: an expansion exists, is canonical, and every canonical
+expansion equals it) — with no `sorry` and no axioms beyond Lean's kernel.
 
 ## References
 

@@ -11,7 +11,9 @@ paper in [`../THEOREM.md`](../THEOREM.md):
   algorithm `T z = (z − digit z)/β`, existence by strong induction on the
   norm (the five exceptional orbits are discharged by `decide` on explicit
   digit strings), uniqueness by parity and cancellation of β, and the
-  packaged `Penney.penney : ∀ z, ∃! ds, Canonical ds ∧ eval ds = z`.
+  packaged `Penney.penney` — for every `z` a canonical digit string exists,
+  evaluates to `z`, and is the only canonical one that does (`∃!`, stated
+  unfolded since core Lean has no `ExistsUnique`).
 - No `sorry`, no extra axioms (`decide` only — nothing uses `Classical.choice`
   beyond what `by_cases` on decidable propositions needs).
 

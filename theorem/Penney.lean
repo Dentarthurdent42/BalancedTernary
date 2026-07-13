@@ -91,10 +91,11 @@ theorem sq_pos (a : Int) (h : a ≠ 0) : 0 < a * a := by
 
 theorem natAbs_le_one_of_sq_le_two (x : Int) (h : x * x ≤ 2) : x.natAbs ≤ 1 := by
   have hn := Int.natAbs_mul_self (a := x)
-  by_contra hc
-  have h2 : 2 ≤ x.natAbs := by omega
-  have h3 : 2 * 2 ≤ x.natAbs * x.natAbs := Nat.mul_le_mul h2 h2
-  omega
+  by_cases hc : x.natAbs ≤ 1
+  · exact hc
+  · have h2 : 2 ≤ x.natAbs := by omega
+    have h3 : 2 * 2 ≤ x.natAbs * x.natAbs := Nat.mul_le_mul h2 h2
+    omega
 
 theorem norm_pos (z : GInt) (h : z ≠ 0) : 0 < norm z := by
   have h1 := sq_nonneg' z.re
@@ -102,7 +103,7 @@ theorem norm_pos (z : GInt) (h : z ≠ 0) : 0 < norm z := by
   rw [norm_def]
   by_cases hre : z.re = 0
   · by_cases him : z.im = 0
-    · exact absurd (GInt.ext (by rw [hre]) (by rw [him])) h
+    · exact absurd (GInt.ext (by rw [hre]; rfl) (by rw [him]; rfl)) h
     · have := sq_pos z.im him
       omega
   · have := sq_pos z.re hre
@@ -175,17 +176,19 @@ abbrev Exceptional (z : GInt) : Prop :=
 closed disk `(a+1)² + b² ≤ 2` that breaks the descent. -/
 theorem not_small (a b : Int) (hd : (a + b) % 2 = 1)
     (hE : ¬Exceptional ⟨a, b⟩) : 2 < (a + 1) * (a + 1) + b * b := by
-  by_contra hc
-  have s1 := sq_nonneg' (a + 1)
-  have s2 := sq_nonneg' b
-  have b1 := natAbs_le_one_of_sq_le_two (a + 1) (by omega)
-  have b2 := natAbs_le_one_of_sq_le_two b (by omega)
-  have hre : a = -2 ∨ a = -1 ∨ a = 0 := by omega
-  have him : b = -1 ∨ b = 0 ∨ b = 1 := by omega
-  rcases hre with rfl | rfl | rfl <;> rcases him with rfl | rfl | rfl <;>
-    first
-      | omega
-      | exact hE (by decide)
+  by_cases hc : 2 < (a + 1) * (a + 1) + b * b
+  · exact hc
+  · exfalso
+    have s1 := sq_nonneg' (a + 1)
+    have s2 := sq_nonneg' b
+    have b1 := natAbs_le_one_of_sq_le_two (a + 1) (by omega)
+    have b2 := natAbs_le_one_of_sq_le_two b (by omega)
+    have hre : a = -2 ∨ a = -1 ∨ a = 0 := by omega
+    have him : b = -1 ∨ b = 0 ∨ b = 1 := by omega
+    rcases hre with rfl | rfl | rfl <;> rcases him with rfl | rfl | rfl <;>
+      first
+        | omega
+        | exact hE (by decide)
 
 theorem norm_T_lt (z : GInt) (h0 : z ≠ 0) (hE : ¬Exceptional z) :
     norm (T z) < norm z := by
@@ -350,21 +353,30 @@ theorem eval_trim (ds : List Bool) : eval (trim ds) = eval ds := by
       show eval (trimCons d (trim t)) = eval (d :: t)
       cases htr : trim t with
       | nil =>
-          have h0 : eval t = 0 := by rw [← ih, htr]
+          have h0 : eval t = 0 := by rw [← ih, htr]; rfl
           have h0re : (eval t).re = 0 := by rw [h0]; rfl
           have h0im : (eval t).im = 0 := by rw [h0]; rfl
           cases d
           · show eval [] = eval (false :: t)
             apply GInt.ext
-            · rw [eval_nil_re, eval_cons_re, h0re, h0im]; simp only [digitVal]; omega
-            · rw [eval_nil_im, eval_cons_im, h0re, h0im]; omega
+            · have e1 := eval_cons_re false t
+              have e2 : digitVal false = 0 := rfl
+              rw [eval_nil_re]
+              omega
+            · have e1 := eval_cons_im false t
+              rw [eval_nil_im]
+              omega
           · show eval [true] = eval (true :: t)
             apply GInt.ext
-            · rw [eval_cons_re, eval_cons_re, h0re, h0im,
-                eval_nil_re, eval_nil_im]
+            · have e1 := eval_cons_re true t
+              have e2 := eval_cons_re true ([] : List Bool)
+              have e3 : (eval ([] : List Bool)).re = 0 := rfl
+              have e4 : (eval ([] : List Bool)).im = 0 := rfl
               omega
-            · rw [eval_cons_im, eval_cons_im, h0re, h0im,
-                eval_nil_re, eval_nil_im]
+            · have e1 := eval_cons_im true t
+              have e2 := eval_cons_im true ([] : List Bool)
+              have e3 : (eval ([] : List Bool)).re = 0 := rfl
+              have e4 : (eval ([] : List Bool)).im = 0 := rfl
               omega
       | cons x xs =>
           rw [htr] at ih
@@ -372,8 +384,12 @@ theorem eval_trim (ds : List Bool) : eval (trim ds) = eval ds := by
           have him : (eval (x :: xs)).im = (eval t).im := by rw [ih]
           show eval (d :: x :: xs) = eval (d :: t)
           apply GInt.ext
-          · rw [eval_cons_re, eval_cons_re, hre, him]
-          · rw [eval_cons_im, eval_cons_im, hre, him]
+          · have e1 := eval_cons_re d (x :: xs)
+            have e2 := eval_cons_re d t
+            omega
+          · have e1 := eval_cons_im d (x :: xs)
+            have e2 := eval_cons_im d t
+            omega
 
 theorem canonical_trim (ds : List Bool) : Canonical (trim ds) := by
   induction ds with
@@ -392,14 +408,17 @@ theorem canonical_trim (ds : List Bool) : Canonical (trim ds) := by
 /-! ### The theorem -/
 
 /-- **Penney–Khmelnik.** Every Gaussian integer has exactly one canonical
-representation in base i − 1 with digits {0, 1}. -/
-theorem penney (z : GInt) : ∃! ds : List Bool, Canonical ds ∧ eval ds = z := by
+representation in base i − 1 with digits {0, 1}. (The statement is `∃!`
+unfolded — core Lean has no `ExistsUnique`.) -/
+theorem penney (z : GInt) :
+    ∃ ds : List Bool, (Canonical ds ∧ eval ds = z) ∧
+      ∀ es : List Bool, Canonical es → eval es = z → es = ds := by
   obtain ⟨ds₀, h₀⟩ := exists_rep z
   refine ⟨trim ds₀, ⟨canonical_trim ds₀, ?_⟩, ?_⟩
   · rw [eval_trim, h₀]
-  · intro es hes
-    exact eval_inj es hes.1 (trim ds₀) (canonical_trim ds₀)
-      (by rw [hes.2, eval_trim, h₀])
+  · intro es hc he
+    exact eval_inj es hc (trim ds₀) (canonical_trim ds₀)
+      (by rw [he, eval_trim, h₀])
 
 /-! ### Spot checks: the exceptional orbits of THEOREM.md §3, and values
 that also appear in the interactive explorer and the JS test suite. -/
