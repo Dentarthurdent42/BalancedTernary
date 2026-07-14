@@ -799,18 +799,18 @@
                 <div className="sect-label">custom system</div>
                 <div className="custom">
                   <div className="field">
-                    <label>base re</label>
-                    <input value={bText.re} className={parsed.b ? '' : 'bad'}
+                    <label htmlFor="base-re">base re</label>
+                    <input id="base-re" value={bText.re} className={parsed.b ? '' : 'bad'}
                            onChange={(e) => { setBText({ ...bText, re: e.target.value }); setSel(null); }} />
                   </div>
                   <div className="field">
-                    <label>base im</label>
-                    <input value={bText.im} className={parsed.b ? '' : 'bad'}
+                    <label htmlFor="base-im">base im</label>
+                    <input id="base-im" value={bText.im} className={parsed.b ? '' : 'bad'}
                            onChange={(e) => { setBText({ ...bText, im: e.target.value }); setSel(null); }} />
                   </div>
                   <div className="field wide">
-                    <label>digits (comma-separated integers)</label>
-                    <input value={dText} className={parsed.D ? '' : 'bad'}
+                    <label htmlFor="digit-set">digits (comma-separated integers)</label>
+                    <input id="digit-set" value={dText} className={parsed.D ? '' : 'bad'}
                            onChange={(e) => { setDText(e.target.value); setSel(null); }} />
                   </div>
                 </div>
@@ -827,6 +827,7 @@
                 <div className="sect-label">digits allowed · n</div>
                 <div className="nrow">
                   <input type="range" min="0" max={nMax} value={n}
+                         aria-label="digits allowed"
                          onChange={(e) => { setPlaying(false); setN(+e.target.value); }} />
                   <span className="nval">{n}/{nMax}</span>
                   <button className={'ghost' + (playing ? ' on' : '')}

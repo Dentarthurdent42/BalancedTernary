@@ -24,12 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Install elan
-        run: |
-          set -euo pipefail
-          curl -sSfL https://github.com/leanprover/elan/releases/download/v3.1.1/elan-x86_64-unknown-linux-gnu.tar.gz | tar xz
-          ./elan-init -y --default-toolchain none
-          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
       - name: Check the Lean proof
-        working-directory: theorem
-        run: lake build
+        uses: leanprover/lean-action@v1
+        with:
+          lake-package-directory: theorem

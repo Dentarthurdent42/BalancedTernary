@@ -14,8 +14,10 @@ paper in [`../THEOREM.md`](../THEOREM.md):
   packaged `Penney.penney` — for every `z` a canonical digit string exists,
   evaluates to `z`, and is the only canonical one that does (`∃!`, stated
   unfolded since core Lean has no `ExistsUnique`).
-- No `sorry`, no extra axioms (`decide` only — nothing uses `Classical.choice`
-  beyond what `by_cases` on decidable propositions needs).
+- Proof toolkit: structural induction, `omega` (linear integer arithmetic),
+  `decide` (the five exceptional orbits and other closed facts), `simp` with
+  explicit lemma lists, and `rcases`/`by_cases` — all core tactics. No `sorry`,
+  no mathlib, no axioms beyond the ones Lean's kernel-checked core itself uses.
 
 ## Building
 
