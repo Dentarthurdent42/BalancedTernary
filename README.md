@@ -39,6 +39,22 @@ dwell-and-index motion. Orbit/zoom the camera, and pick the number of trits
 
 → [open `counter3d.html`](./counter3d.html)
 
+### `imaginary.html` — the imaginary-bases explorer
+An interactive map of **complex-number bases**: every Gaussian integer in view is
+a cell, colored by how many digits its expansion needs in the chosen base — scrub
+the digit budget and watch the **twindragon** assemble for base `i−1`. Presets for
+`i−1`, `−1−i`, quater-imaginary `2i`, negabinary `−2`, balanced ternary `3` and the
+gap-riddled `1+i`, plus fully custom base/digit sets. Click any cell for its digit
+string and the step-by-step division-algorithm trace; a live verdict reports
+whether the current system covers everything in view.
+
+Behind it is a real theorem — *every Gaussian integer has a unique binary
+expansion in base `i−1`* (Khmelnik 1964 · Penney 1965) — proved on paper in
+[`THEOREM.md`](./THEOREM.md) and machine-checked in Lean 4 in
+[`theorem/`](./theorem/). (Its relation to balanced ternary is future work.)
+
+→ [open `imaginary.html`](./imaginary.html)
+
 ### `DESIGN.md` — the mechanism
 The engineering write-up behind the counter: why a 6-slot Geneva makes a perfect
 trit, the external-Geneva geometry for `n = 6` (`r = 0.5c`, 120° of action /
@@ -82,3 +98,10 @@ then exercises the real arithmetic functions:
 - `counter.html` — `decompose` across the full ±1093 range (values reconstruct,
   wheel angle agrees with its trit) and the carry cadence (one index per
   `3ᵏ` counts).
+- `imaginary.html` — exhaustive base-`i−1` round-trips over the `|a|,|b| ≤ 40`
+  box, uniqueness over every canonical string up to 16 digits, quater-imaginary
+  and negabinary round-trips, and the `1+i` gap as a negative control.
+
+A second CI job compiles the **Lean 4 proof** in [`theorem/`](./theorem/)
+(`lake build`, pinned toolchain, no mathlib) so the theorem behind
+`imaginary.html` stays machine-checked on every push.

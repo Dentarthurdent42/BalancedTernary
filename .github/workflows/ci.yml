@@ -19,3 +19,12 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test
+
+  theorem:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check the Lean proof
+        uses: leanprover/lean-action@v1
+        with:
+          lake-package-directory: theorem

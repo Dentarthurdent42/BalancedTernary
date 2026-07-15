@@ -159,5 +159,128 @@ function loadModuleKinematics(file, capture) {
   console.log(`counter.html: decompose full ±${MAX} range + carry cadence ok`);
 }
 
+// ---------- imaginary.html : complex-base positional systems ----------
+{
+  const { gnorm, gmul, gdivExact, gdivmod, isCRS, encode, evalDigits, minimalDepths,
+    digitsFromParents } =
+    loadPage('imaginary.html', ['gnorm', 'gmul', 'gdivExact', 'gdivmod', 'isCRS',
+      'encode', 'evalDigits', 'minimalDepths', 'digitsFromParents']);
+
+  const key = (z) => z[0] + ',' + z[1];
+  const eq = (a, b) => a[0] === b[0] && a[1] === b[1];
+
+  // complete-residue-system detection. Note 2i: N(2i) = 4 but rational
+  // integers only occupy two residue classes mod 2i (2 ≡ 0), so quater-
+  // imaginary's {0,1,2,3} is NOT a CRS — expansions need search, not greedy.
+  assert(isCRS([-1, 1], [0, 1]) === true, 'i−1 with {0,1} is a CRS');
+  assert(isCRS([0, 2], [0, 1, 2, 3]) === false, '2i with {0,1,2,3}: 2 ≡ 0 mod 2i, not a CRS');
+  assert(isCRS([1, 1], [0, 1]) === true, '1+i with {0,1} is a CRS');
+  assert(isCRS([-1, 1], [0, 2]) === false, 'i−1 with {0,2}: 2 ≡ 0 mod (i−1), not a CRS');
+  assert(isCRS([3, 0], [-1, 0, 1]) === false, 'base 3 with 3 digits: N(3)=9, not a CRS');
+
+  // THE THEOREM, computationally: in base i−1 with digits {0,1} every
+  // Gaussian integer in a big box has an expansion, and it reconstructs.
+  const B = [-1, 1], D01 = [0, 1], BOX = 40;
+  for (let a = -BOX; a <= BOX; a++) {
+    for (let b = -BOX; b <= BOX; b++) {
+      const enc = encode([a, b], B, D01);
+      assert(enc !== null, `no base i−1 expansion for ${a}+${b}i`);
+      if (!enc) continue;
+      assert(enc.digits.every((d) => d === 0 || d === 1),
+        `digit out of {0,1} for ${a}+${b}i`);
+      assert(eq(evalDigits(enc.digits, B), [a, b]),
+        `base i−1 round-trip failed for ${a}+${b}i`);
+    }
+  }
+
+  // uniqueness, computationally: distinct digit strings (no leading zero)
+  // must evaluate to distinct Gaussian integers — exhaustive to 16 digits.
+  {
+    const seen = new Map([['0,0', '0']]);
+    let strings = [[1]]; // every canonical nonzero string ends (MSD) in 1
+    for (let len = 1; len <= 16; len++) {
+      for (const ds of strings) {
+        const v = key(evalDigits(ds, B));
+        assert(!seen.has(v) || seen.get(v) === ds.join(''),
+          `two expansions hit ${v}: ${seen.get(v)} and ${ds.join('')}`);
+        seen.set(v, ds.join(''));
+      }
+      strings = strings.flatMap((ds) => [[0, ...ds], [1, ...ds]]);
+    }
+    console.log(`imaginary.html: base i−1 uniqueness exhaustive to 16 digits (${seen.size} values) ok`);
+  }
+
+  // the viz's forward search agrees with the division algorithm: minimal
+  // depth = canonical digit count (unique representation ⇒ they coincide)
+  {
+    const { depth } = minimalDepths(B, D01, 24, 40);
+    for (let a = -15; a <= 15; a++) {
+      for (let b = -15; b <= 15; b++) {
+        const enc = encode([a, b], B, D01);
+        assert(depth.get(key([a, b])) === enc.digits.length,
+          `depth(${a}+${b}i) = ${depth.get(key([a, b]))} ≠ ${enc.digits.length} digits`);
+      }
+    }
+  }
+
+  // quater-imaginary (Knuth): base 2i, digits {0,1,2,3}. Integer digit
+  // strings Σ dₖ(2i)ᵏ always have even imaginary part, so exactly the
+  // even-imaginary half of ℤ[i] is representable (i itself needs the
+  // radix-point digit of Knuth's full system). Non-CRS ⇒ test via the
+  // forward search, the same path the page uses.
+  {
+    const B2 = [0, 2], D4 = [0, 1, 2, 3];
+    const { depth, parent } = minimalDepths(B2, D4, 60, 24);
+    for (let a = -BOX; a <= BOX; a++) {
+      for (let b = -BOX; b <= BOX; b++) {
+        const dep = depth.get(key([a, b]));
+        if (b % 2 !== 0) {
+          assert(dep === undefined, `quater-imaginary should miss ${a}+${b}i (odd im)`);
+          continue;
+        }
+        assert(dep !== undefined, `quater-imaginary missing ${a}+${b}i`);
+        const ds = digitsFromParents(parent, [a, b]);
+        assert(ds !== null && ds.length === dep && ds.every((d) => D4.includes(d)),
+          `quater-imaginary digits invalid for ${a}+${b}i`);
+        assert(eq(evalDigits(ds, B2), [a, b]),
+          `quater-imaginary round-trip failed for ${a}+${b}i`);
+      }
+    }
+  }
+
+  // negabinary: base −2 on the real line matches n.toString via known values
+  for (let v = -100; v <= 100; v++) {
+    const enc = encode([v, 0], [-2, 0], [0, 1]);
+    assert(enc !== null && eq(evalDigits(enc.digits, [-2, 0]), [v, 0]),
+      `negabinary round-trip failed for ${v}`);
+  }
+
+  // negative control: base 1+i with {0,1} is a CRS but does NOT span ℤ[i] —
+  // i cycles under the division algorithm and has no finite expansion
+  assert(encode([0, 1], [1, 1], [0, 1]) === null, '1+i: i must have no expansion');
+  assert(gdivmod([0, 1], [1, 1], [0, 1]).q.join() === '0,1',
+    '1+i: (i−1)/(1+i) = i, the fixed point behind the gap');
+  {
+    const { depth } = minimalDepths([1, 1], [0, 1], 20, 40);
+    let gaps = 0, total = 0;
+    for (let a = -10; a <= 10; a++) {
+      for (let b = -10; b <= 10; b++) {
+        total++;
+        if (!depth.has(key([a, b]))) gaps++;
+      }
+    }
+    assert(gaps > 0, '1+i with {0,1} should leave gaps');
+    assert(gaps < total, '1+i with {0,1} should still reach some values');
+  }
+
+  // spot algebra
+  assert(gnorm([-1, 1]) === 2 && gnorm([0, 2]) === 4, 'gnorm');
+  assert(eq(gmul([-1, 1], [-1, 1]), [0, -2]), '(i−1)² = −2i');
+  assert(gdivExact([2, 0], [-1, 1]).join() === '-1,-1', '2/(i−1) = −1−i');
+  assert(gdivExact([1, 0], [-1, 1]) === null, '(i−1) ∤ 1');
+
+  console.log(`imaginary.html: base i−1 / 2i / −2 round-trips over ±${BOX} box + 1+i gaps ok`);
+}
+
 if (failures) { console.error(`${failures} assertion(s) failed`); process.exit(1); }
 console.log('all checks passed');
